@@ -72,12 +72,7 @@ class UnparsableFile(Exception):
         :param type_: err type.
         :raises ValueError: if `type_` not in allowed types.
         """
-        allowed_types = {SyntaxError, IndentationError, ValueError}
-        if type_ not in allowed_types:
-            raise ValueError(  # pragma: nocover
-                f"UnparsableFile exception only takes {allowed_types}"
-                + f" as err parameter but {type_!r} where given."
-            )
+        pass
 
 
 class UnsupportedCase(Exception):
@@ -97,7 +92,4 @@ def libcst_parser_syntax_error_message(path: Path, err) -> str:
     :param err: instance of `LibCST.ParserSyntaxError`.
     :returns: refactored message.
     """
-    location = f"{path}:{err.raw_line}:{err.raw_column}"
-    line = err._lines[0].replace("\n", "").lstrip()
-    postfix = f" {line!r}"
-    return f"{location} libcst.ParserSyntaxError: {err.message.rstrip('.')}:{postfix}"
+    pass

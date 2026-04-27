@@ -98,10 +98,9 @@ def recursive(func: FunctionT) -> FunctionT:
 
     @wraps(func)
     def wrapper(self, *args, **kwargs):
-        func(self, *args, **kwargs)
-        self.generic_visit(*args)
+        pass
 
-    return cast(FunctionT, wrapper)
+    pass
 
 
 @dataclass
@@ -151,66 +150,29 @@ class SourceAnalyzer(ast.NodeVisitor):
 
     @recursive
     def visit_Import(self, node: ast.Import):
-        if node not in self._imports_to_skip:
-            import_node = self._get_import_node(node)
-            self._import_stats.import_.add(import_node)
+        pass
 
     @recursive
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node not in self._imports_to_skip:
-            import_from_node = self._get_import_from_node(node)
-            if not str(import_from_node.module).startswith("__"):
-                self._import_stats.from_.add(import_from_node)
+        pass
 
     @recursive
     def visit_Name(self, node: ast.Name):
-        self._source_stats.name_.add(node.id)
+        pass
 
     @recursive
     def visit_Attribute(self, node: ast.Attribute):
-        self._source_stats.attr_.add(node.attr)
+        pass
 
     @recursive
     def visit_MatchAs(self, node: "ast.MatchAs"):
         #: Support Match statement (PYTHON >= 3.10).
         #: PEP0634: https://www.python.org/dev/peps/pep-0634/
-        if node.name is not None:
-            self._source_stats.name_.add(node.name)
+        pass
 
     @recursive
     def visit_Call(self, node: ast.Call):
-        func = node.func
-
-        #: Support casting case.
-        #: >>> from typing import cast
-        #: >>> import xxx, yyy
-        #: >>> zzz = cast("xxx", yyy)
-        #: Issue: https://github.com/hadialqattan/pycln/issues/26
-        if getattr(func, "id", "") == "cast" or (
-            getattr(func, "attr", "") == "cast"
-            and getattr(func.value, "id", "") == "typing"
-        ):
-            self._parse_string(node.args[0])
-
-        #: Support TypeVar cases (when types passed as str).
-        #: >>> from typing import TypeVar
-        #: >>> import X, Y
-        #: >>> XType = TypeVar("XType", "X")
-        #: >>> YBoundedType = TypeVar("YBoundedType", bound="Y")
-        if getattr(func, "id", "") == "TypeVar" or (
-            getattr(func, "attr", "") == "TypeVar"
-            and getattr(func.value, "id", "") == "typing"
-        ):
-            args = getattr(node, "args", [])[1:]  # Skip the TypeVar's name.
-            for arg in args:
-                self._parse_string(arg)
-
-            # Support bounded types (bound="Type")
-            kwargs = getattr(node, "keywords", [])
-            for kwarg in kwargs:
-                if getattr(kwarg, "arg", "") == "bound":
-                    self._parse_string(getattr(kwarg, "value", None))
-                    break
+        pass
 
     @recursive
     def visit_Subscript(self, node: ast.Subscript) -> None:
@@ -221,18 +183,7 @@ class SourceAnalyzer(ast.NodeVisitor):
         #: >>>
         #: >>> bar = List['Import']
         #: >>> foo = Union['Import', 'ImportFrom']
-        v = getattr(node, "value", "")
-        _id = (
-            getattr(v.value, "id", "") if hasattr(v, "value") else getattr(v, "id", "")
-        )
-        if _id in SUBSCRIPT_TYPE_VARIABLE or _id == "typing":
-            for elt in getattr(node.slice, "elts", ()) or (node.slice,):
-                if _id == "Callable" and isinstance(elt, ast.List):
-                    # See issue: https://github.com/hadialqattan/pycln/issues/208
-                    for sub_elt in getattr(elt, "elts", ()):
-                        self._parse_string(sub_elt)
-                else:
-                    self._parse_string(elt)
+        pass
 
     @recursive
     def visit_AnnAssign(self, node: ast.AnnAssign):
@@ -246,55 +197,17 @@ class SourceAnalyzer(ast.NodeVisitor):
         #:
         #: 3) semi string type annotations:
         #:  >>> foo: Bar["Baz"] = []
-        self._visit_string_type_annotation(node)
-
-        #: Support (typing/typing_extensions) TypeAlias
-        #:
-        #: >>> Foo: TypeAlias = "BarClass"
-        annotation: ast.expr = node.annotation
-        if getattr(annotation, "id", "") == "TypeAlias" or (
-            getattr(annotation, "attr", "") == "TypeAlias"
-            and annotation.value.id in ("typing", "typing_extensions")
-        ):
-            self._parse_string(node.value)
+        pass
 
     @recursive
     def visit_arg(self, node: ast.arg):
         # Support Python ^3.8 type comments.
-        self._visit_type_comment(node)
-        #: Support all
-        #:
-        #: 1) string type annotations:
-        #:  >>> def foo(bar: "Baz[X]"):
-        #:  ...     pass
-        #:
-        #: 2) nested string type annotations:
-        #:  >>> def foo(bar: "Baz['X']"):
-        #:  ...     pass
-        #:
-        #: 3) semi string type annotations:
-        #:  >>> def foo(bar: Baz['X']):
-        #:  ...     pass
-        self._visit_string_type_annotation(node)
+        pass
 
     @recursive
     def visit_FunctionDef(self, node: FunctionDefT):
         # Support Python ^3.8 type comments.
-        self._visit_type_comment(node)
-        #: Support all
-        #:
-        #: 1) string type annotations:
-        #:  >>> def foo() -> "Baz[X]":
-        #:  ...     pass
-        #:
-        #: 2) nested string type annotations:
-        #:  >>> def foo() -> "Baz['X']":
-        #:  ...     pass
-        #:
-        #: 3) semi string type annotations:
-        #:  >>> def foo() -> Baz['X']:
-        #:  ...     pass
-        self._visit_string_type_annotation(node)
+        pass
 
     # Support `ast.AsyncFunctionDef`.
     visit_AsyncFunctionDef = visit_FunctionDef
@@ -313,62 +226,16 @@ class SourceAnalyzer(ast.NodeVisitor):
         #: >>>     ...
         #:
         #: Issue: https://github.com/hadialqattan/pycln/issues/169
-        for base in node.bases:
-            if isinstance(base, ast.Subscript):
-                for elt in getattr(base.slice, "elts", ()) or (base.slice,):
-                    self._parse_string(elt)
+        pass
 
     @recursive
     def visit_Assign(self, node: ast.Assign):
         # Support Python ^3.8 type comments.
-        self._visit_type_comment(node)
-        id_ = getattr(node.targets[0], "id", None)
-        # These names will be skipped on import `*` case.
-        if id_ in NAMES_TO_SKIP:
-            self._source_stats.names_to_skip.add(id_)
-        # Support `__all__` dunder overriding cases.
-        if id_ == __ALL__:
-            self._has_all = True
-            if isinstance(node.value, (ast.List, ast.Tuple, ast.Set)):
-                #: Support normal `__all__` dunder overriding:
-                #:
-                #: >>> import x, y, z
-                #: >>>
-                #: >>> __all__ = ["x", "y", "z"]
-                self._add_list_names(node.value.elts)
-            elif isinstance(node.value, ast.BinOp):
-                #: Support `__all__` dunder overriding with
-                #: add (`+`) binary operator (concatenation):
-                #:
-                #: >>> import x, y, z, i, j
-                #: >>>
-                #: >>> __all__ = ["x"] + ["y", "z"] + ["i", "j"]
-                #:
-                #: Issue: https://github.com/hadialqattan/pycln/issues/28
-                self._add_concatenated_list_names(node.value)
+        pass
 
     @recursive
     def visit_AugAssign(self, node: ast.AugAssign):
-        id_ = getattr(node.target, "id", None)
-        # Support `__all__` with `+=` operator case.
-        if id_ == __ALL__:
-            self._has_all = True
-            if isinstance(node.value, (ast.List, ast.Tuple, ast.Set)):
-                #: Support `__all__` dunder overriding with
-                #: only `+=` operator:
-                #:
-                #: >>> import x, y, z
-                #: >>>
-                #: >>> __all__ += ["x", "y", "z"]
-                self._add_list_names(node.value.elts)
-            elif isinstance(node.value, ast.BinOp):
-                #: Support `__all__` dunder overriding with
-                #: both `+=` and `+` operators:
-                #:
-                #: >>> import x, y, z
-                #: >>>
-                #: >>> __all__ += ["x", "y"] + ["z"]
-                self._add_concatenated_list_names(node.value)
+        pass
 
     @recursive
     def visit_Expr(self, node: ast.Expr):
@@ -382,38 +249,13 @@ class SourceAnalyzer(ast.NodeVisitor):
         #: >>> __all__.extend(["z"])
         #:
         #: Issue: https://github.com/hadialqattan/pycln/issues/29
-        node_value = node.value
-        if (
-            isinstance(node_value, ast.Call)
-            and isinstance(node_value.func, ast.Attribute)
-            and isinstance(node_value.func.value, ast.Name)
-            and node_value.func.value.id == __ALL__
-        ):
-            func_attr = node_value.func.attr
-            if func_attr == "append":
-                self._add_list_names(node_value.args)
-            elif func_attr == "extend":
-                for arg in node_value.args:
-                    if isinstance(arg, ast.List):
-                        self._add_list_names(arg.elts)
+        pass
 
     def _visit_string_type_annotation(
         self, node: Union[ast.AnnAssign, ast.arg, FunctionDefT]
     ) -> None:
         # Support string type annotations.
-        if isinstance(node, (ast.AnnAssign, ast.arg)):
-            annotation = node.annotation
-        else:
-            annotation = node.returns
-
-        # Support generic type annotations.
-        if isinstance(annotation, ast.Subscript):
-            if isinstance(annotation.slice, ast.Constant):
-                annotation = annotation.slice
-            elif isinstance(annotation.slice, ast.Index):
-                annotation = annotation.slice.value
-
-        self._parse_string(annotation, True)
+        pass
 
     def _visit_type_comment(
         self, node: Union[ast.Assign, ast.arg, FunctionDefT]
@@ -425,102 +267,46 @@ class SourceAnalyzer(ast.NodeVisitor):
         #: For more information:
         #:     - https://www.python.org/dev/peps/pep-0526/
         #:     - https://docs.python.org/3.8/library/ast.html#ast.parse
-        type_comment = getattr(node, "type_comment", None)
-        if type_comment:
-            if isinstance(node, (ast.Assign, ast.arg)):
-                mode = "eval"
-            else:
-                mode = "func_type"
-            try:
-                tree = parse_ast(type_comment, mode=mode)
-                self._add_name_attr_const(tree, True)
-            except UnparsableFile:
-                #: Ignore errors when it's not a valid type comment.
-                #:
-                #: Sometimes we find nodes (comments)
-                #: satisfy PIP-526 type comment rules, but they're not valid.
-                #:
-                #: Issue: https://github.com/hadialqattan/pycln/issues/58
-                pass
+        pass
 
     def _parse_string(
         self, node: ast.Constant, is_str_annotation: bool = False
     ) -> None:
-        try:
-            # Parse string names/attrs.
-            if isinstance(node, ast.Constant):
-                val = getattr(node, "value", "")
-                if val and isinstance(val, str):
-                    val = val.strip()
-                    tree = parse_ast(val, mode="eval")
-                    self._add_name_attr_const(tree, is_str_annotation)
-        except UnparsableFile:
-            #: Ignore errors when parsing Literals
-            #: that are not valid identifiers (e.g. contain white-spaces).
-            #:
-            #: >>> from typing import Literal
-            #: >>> L: Literal[" "] = " "
-            #:
-            #: Issue: https://github.com/hadialqattan/pycln/issues/41
-            pass
+        pass
 
     def _add_concatenated_list_names(self, node: ast.BinOp) -> None:
         #: Safely add `["x", "y"] + ["i", "j"]`
         #: `const/str` names to `self._source_stats.name_`.
-        if isinstance(node.right, (ast.List, ast.Tuple, ast.Set)):
-            self._add_list_names(node.right.elts)
-        if isinstance(node.left, (ast.List, ast.Tuple, ast.Set)):
-            self._add_list_names(node.left.elts)
-        elif isinstance(node.left, ast.BinOp):
-            self._add_concatenated_list_names(node.left)
+        pass
 
     def _add_list_names(self, node: list[ast.expr]) -> None:
         # Safely add list `const/str` names to `self._source_stats.name_`.
-        for item in node:
-            if isinstance(item, ast.Constant):
-                value = getattr(item, "value", "")
-                if value and isinstance(value, str):
-                    self._source_stats.name_.add(value)
+        pass
 
     def _add_name_attr_const(self, tree: ast.AST, is_str_annotation: bool = False):
         # Add any `ast.Name`, `ast.Attribute`, and (`ast.Constant` if is_str_annotation)
         # child to `self._source_stats`.
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Name):
-                self._source_stats.name_.add(node.id)
-            elif isinstance(node, ast.Attribute):
-                self._source_stats.attr_.add(node.attr)
-            elif is_str_annotation and isinstance(node, ast.Constant):
-                self._parse_string(node, is_str_annotation)
+        pass
 
     def _get_import_node(self, node: ast.Import) -> _nodes.Import:
-        end_lineno = node.end_lineno
-        location = _nodes.NodeLocation((node.lineno, node.col_offset), end_lineno)
-        return _nodes.Import(location=location, names=node.names)
+        pass
 
     def _get_import_from_node(self, node: ast.ImportFrom) -> _nodes.ImportFrom:
-        end_lineno = node.end_lineno
-        location = _nodes.NodeLocation((node.lineno, node.col_offset), end_lineno)
-        return _nodes.ImportFrom(
-            location=location,
-            names=node.names,
-            module=node.module,
-            level=node.level,
-        )
+        pass
 
     def get_stats(self) -> tuple[SourceStats, ImportStats]:
         """Get source analyzer results.
 
         :returns: tuple of `SourceStats` and `ImportStats`.
         """
-        return self._source_stats, self._import_stats
+        pass
 
     def has_all(self) -> bool:
         """`self._has_all` getter.
 
         :returns: True if the source includes an `__all__` dunder.
         """
-        return self._has_all
+        pass
 
 
 class ImportablesAnalyzer(ast.NodeVisitor):
@@ -545,51 +331,11 @@ class ImportablesAnalyzer(ast.NodeVisitor):
 
     @recursive
     def visit_Assign(self, node: ast.Assign):
-        id_ = getattr(node.targets[0], "id", None)
-        # Support `__all__` dunder overriding cases.
-        if id_ == __ALL__:
-            self._has_all = True
-            self._importables.clear()
-            if isinstance(node.value, (ast.List, ast.Tuple, ast.Set)):
-                #: Support normal `__all__` dunder overriding:
-                #:
-                #: >>> import x, y, z
-                #: >>>
-                #: >>> __all__ = ["x", "y", "z"]
-                self._add_list_names(node.value.elts)
-            elif isinstance(node.value, ast.BinOp):
-                #: Support `__all__` dunder overriding with
-                #: add (`+`) binary operator (concatenation):
-                #:
-                #: >>> import x, y, z, i, j
-                #: >>>
-                #: >>> __all__ = ["x"] + ["y", "z"] + ["i", "j"]
-                #:
-                #: Issue: https://github.com/hadialqattan/pycln/issues/28
-                self._add_concatenated_list_names(node.value)
+        pass
 
     @recursive
     def visit_AugAssign(self, node: ast.AugAssign):
-        id_ = getattr(node.target, "id", None)
-        # Support `__all__` with `+=` operator case.
-        if id_ == __ALL__:
-            self._has_all = True
-            if isinstance(node.value, (ast.List, ast.Tuple, ast.Set)):
-                #: Support `__all__` dunder overriding with
-                #: only `+=` operator:
-                #:
-                #: >>> import x, y, z
-                #: >>>
-                #: >>> __all__ += ["x", "y", "z"]
-                self._add_list_names(node.value.elts)
-            elif isinstance(node.value, ast.BinOp):
-                #: Support `__all__` dunder overriding with
-                #: both `+=` and `+` operators:
-                #:
-                #: >>> import x, y, z
-                #: >>>
-                #: >>> __all__ += ["x", "y"] + ["z"]
-                self._add_concatenated_list_names(node.value)
+        pass
 
     @recursive
     def visit_Expr(self, node: ast.Expr):
@@ -603,48 +349,22 @@ class ImportablesAnalyzer(ast.NodeVisitor):
         #: >>> __all__.extend(["z"])
         #:
         #: Issue: https://github.com/hadialqattan/pycln/issues/29
-        node_value = node.value
-        if (
-            isinstance(node_value, ast.Call)
-            and isinstance(node_value.func, ast.Attribute)
-            and isinstance(node_value.func.value, ast.Name)
-            and node_value.func.value.id == __ALL__
-        ):
-            func_attr = node_value.func.attr
-            if func_attr == "append":
-                self._add_list_names(node_value.args)
-            elif func_attr == "extend":
-                for arg in node_value.args:
-                    if isinstance(arg, ast.List):
-                        self._add_list_names(arg.elts)
+        pass
 
     @recursive
     def visit_Import(self, node: ast.Import):
         # Analyze each import statement.
-        for alias in node.names:
-            name = alias.asname if alias.asname else alias.name
-            self._importables.add(name)
+        pass
 
     @recursive
     def visit_ImportFrom(self, node: ast.ImportFrom):
         # Analyze each importFrom statement.
-        try:
-            if node.names[0].name == "*":
-                # Expand import star if possible.
-                node = cast(ast.ImportFrom, expand_import_star(node, self._path))
-            for alias in node.names:
-                name = alias.asname if alias.asname else alias.name
-                self._importables.add(name)
-        except UnexpandableImportStar:  # pragma: no cover
-            # * We shouldn't do anything because it's not importable.
-            pass  # pragma: no cover
+        pass
 
     @recursive
     def visit_FunctionDef(self, node: FunctionDefT):
         # Add function name as importable name.
-        if node.name not in self._not_importables:
-            self._importables.add(node.name)
-        self._compute_not_importables(node)
+        pass
 
     # Support `ast.AsyncFunctionDef`.
     visit_AsyncFunctionDef = visit_FunctionDef
@@ -652,65 +372,32 @@ class ImportablesAnalyzer(ast.NodeVisitor):
     @recursive
     def visit_ClassDef(self, node: ast.ClassDef):
         # Add class name as importable name.
-        if node.name not in self._not_importables:
-            self._importables.add(node.name)
-        self._compute_not_importables(node)
+        pass
 
     @recursive
     def visit_Name(self, node: ast.Name):
-        if isinstance(node.ctx, ast.Store):
-            # Except not-importables.
-            if node not in self._not_importables:
-                self._importables.add(node.id)
+        pass
 
     def _add_concatenated_list_names(self, node: ast.BinOp) -> None:
         #: Safely add `["x", "y"] + ["i", "j"]`
         #: `const/str` names to `self._importables`.
-        if isinstance(node.right, (ast.List, ast.Tuple, ast.Set)):
-            self._add_list_names(node.right.elts)
-        if isinstance(node.left, (ast.List, ast.Tuple, ast.Set)):
-            self._add_list_names(node.left.elts)
-        elif isinstance(node.left, ast.BinOp):
-            self._add_concatenated_list_names(node.left)
+        pass
 
     def _add_list_names(self, node: list[ast.expr]) -> None:
         # Safely add list `const/str` names to `self._importables`.
-        for item in node:
-            if isinstance(item, ast.Constant):
-                value = getattr(item, "value", "")
-                if value and isinstance(value, str):
-                    self._importables.add(value)
+        pass
 
     def _compute_not_importables(self, node: Union[FunctionDefT, ast.ClassDef]):
         # Compute class/function not-importables.
-        for node_ in ast.iter_child_nodes(node):
-            if isinstance(node_, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                self._not_importables.add(cast(str, node_.name))
-
-            if isinstance(node_, ast.Assign):
-                for target in node_.targets:
-                    self._not_importables.add(cast(ast.Name, target))
+        pass
 
     def get_stats(self) -> set[str]:
-        if self._path.name == "__init__.py":
-            for path in os.listdir(self._path.parent):
-                file_path = self._path.parent.joinpath(path)
-                if file_path.is_dir() or path.endswith(".py"):
-                    self._importables.add(path.split(".")[0])
-        return self._importables
+        pass
 
     def generic_visit(self, node):
         """Called if no explicit visitor function exists for a node
         (override)."""
-        # Continue visiting if only if `__all__` has not overridden.
-        if (not self._has_all) or isinstance(node, ast.AugAssign):
-            for _, value in ast.iter_fields(node):
-                if isinstance(value, list):
-                    for item in value:
-                        if isinstance(item, ast.AST):
-                            self.visit(item)
-                elif isinstance(value, ast.AST):
-                    self.visit(value)
+        pass
 
 
 @unique
@@ -748,7 +435,7 @@ class SideEffectsAnalyzer(ast.NodeVisitor):
     @recursive
     def visit_FunctionDef(self, node: FunctionDefT):
         # Mark any call inside a function as not-side-effect.
-        self._compute_not_side_effects(node)
+        pass
 
     # Support `ast.AsyncFunctionDef`.
     visit_AsyncFunctionDef = visit_FunctionDef
@@ -756,70 +443,38 @@ class SideEffectsAnalyzer(ast.NodeVisitor):
     @recursive
     def visit_ClassDef(self, node: ast.ClassDef):
         # Mark any call inside a class as not-side-effect.
-        self._compute_not_side_effects(node)
+        pass
 
     def _compute_not_side_effects(
         self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef]
     ) -> None:
         # Mark any call inside the given `node` as not-side-effect.
-        for node_ in ast.iter_child_nodes(node):
-            if isinstance(node_, ast.Expr):
-                if isinstance(node_.value, ast.Call):
-                    self._not_side_effects.add(node_.value)
+        pass
 
     @recursive
     def visit_Call(self, node: ast.Call):
-        if node not in self._not_side_effects:
-            self._has_side_effects = HasSideEffects.YES
+        pass
 
     @recursive
     def visit_Import(self, node: ast.Import):
-        self._has_side_effects = SideEffectsAnalyzer._check_names(node.names)
+        pass
 
     @recursive
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        packages = node.module.split(".") if node.module else []
-        packages_aliases = [ast.alias(name=name, asname=None) for name in packages]
-        self._has_side_effects = SideEffectsAnalyzer._check_names(packages_aliases)
-        if self._has_side_effects is HasSideEffects.NO:
-            self._has_side_effects = SideEffectsAnalyzer._check_names(node.names)
+        pass
 
     @staticmethod
     def _check_names(names: list[ast.alias]) -> HasSideEffects:
         # Check if imported names has side effects or not.
-        for alias in names:
-            # All standard lib modules doesn't has side effects
-            # except `pathu.IMPORTS_WITH_SIDE_EFFECTS`.
-            if alias.name in pathu.get_standard_lib_names():
-                continue
-
-            # Known side effects.
-            if alias.name in pathu.IMPORTS_WITH_SIDE_EFFECTS:
-                return HasSideEffects.YES
-
-            # [Here instead of doing that, we can make the analyzer
-            # works recursively inside each not known import.
-            return HasSideEffects.MAYBE
-            # I choosed this way because it's almost %100 we will end
-            # with a file that has side effects :-) ].
-
-        return HasSideEffects.NO
+        pass
 
     def has_side_effects(self) -> HasSideEffects:
-        return self._has_side_effects
+        pass
 
     def generic_visit(self, node):
         """Called if no explicit visitor function exists for a node
         (override)."""
-        # Continue visiting if only if there's no know side effects.
-        if self._has_side_effects is HasSideEffects.NO:
-            for _, value in ast.iter_fields(node):
-                if isinstance(value, list):
-                    for item in value:
-                        if isinstance(item, ast.AST):
-                            self.visit(item)
-                elif isinstance(value, ast.AST):
-                    self.visit(value)
+        pass
 
 
 def expand_import_star(
@@ -833,47 +488,7 @@ def expand_import_star(
     :raises UnexpandableImportStar: when `ReadPermissionError`,
         `UnparsableFile` or `ModuleNotFoundError` or `RecursionError` raised.
     """
-    mpath = pathu.get_import_from_path(path, "*", node.module, node.level)
-
-    importables: set[str] = set()
-
-    try:
-        if mpath:
-            content, _, _ = iou.safe_read(mpath, permissions=(os.R_OK,))
-            tree = parse_ast(content, mpath)
-
-            analyzer = ImportablesAnalyzer(mpath)
-            analyzer.visit(tree)
-            importables = analyzer.get_stats()
-        else:
-            name = ("." * node.level) + (node.module if node.module else "")
-            raise ModuleNotFoundError(name=name)
-    except (
-        ReadPermissionError,
-        UnparsableFile,
-        ModuleNotFoundError,
-        RecursionError,
-    ) as err:
-        if isinstance(err, ModuleNotFoundError):
-            msg = f"{err.name!r} module not found or it's a C wrapped module!"
-        elif isinstance(err, RecursionError):
-            msg = f"{err}; pycln encounterd too many modules!"
-        else:
-            msg = str(err)  # pragma: nocover
-
-        if hasattr(node, "location"):
-            location = node.location  # pragma: nocover.
-        else:
-            location = _nodes.NodeLocation((node.lineno, node.col_offset), 0)
-
-        raise UnexpandableImportStar(path, location, msg) from err
-
-    # Create `ast.alias` for each name.
-    node.names.clear()
-    for name in importables:
-        node.names.append(ast.alias(name=name, asname=None))
-
-    return node
+    pass
 
 
 def parse_ast(source_code: str, path: Path = Path(""), mode: str = "exec") -> ast.AST:
@@ -886,7 +501,4 @@ def parse_ast(source_code: str, path: Path = Path(""), mode: str = "exec") -> as
     :raises UnparsableFile: if the compiled source is invalid,
         or the source contains null bytes.
     """
-    try:
-        return ast.parse(source_code, mode=mode, type_comments=True)
-    except (SyntaxError, IndentationError, ValueError) as err:
-        raise UnparsableFile(path, err) from err
+    pass

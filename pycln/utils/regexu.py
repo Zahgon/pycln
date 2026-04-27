@@ -35,18 +35,7 @@ def safe_compile(pattern: str, type_: str) -> Pattern[str]:
     :param type_: 'include' OR 'exclude'.
     :returns: complied regex.
     """
-    try:
-        if isinstance(pattern, str):
-            compiled: Pattern[str] = re.compile(pattern, re.IGNORECASE)
-            return compiled
-        return pattern
-    except re.error as err:
-        typer.secho(
-            f"Invalid regular expression for {type_} given: {pattern!r} ⛔",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(1) from err
+    pass
 
 
 def strpath(path: Path) -> str:
@@ -55,11 +44,7 @@ def strpath(path: Path) -> str:
     :param path: file-system path.
     :returns: stringified path.
     """
-    if ISWIN:
-        path_str = str(path).replace("\\", "/")
-        return path_str if path.is_file() else f"{path_str}/"
-    else:
-        return f"{path}" if path.is_file() else f"{path}/"
+    pass
 
 
 def is_init_file(path: Path) -> bool:
@@ -68,8 +53,7 @@ def is_init_file(path: Path) -> bool:
     :param path: file-system path to check.
     :returns: True if the file is `__init__.py(i)` else False.
     """
-    regex: Pattern[str] = safe_compile(INIT_FILE_REGEX, INCLUDE)
-    return bool(regex.match(path.name))
+    pass
 
 
 def is_stub_file(path: Path) -> bool:
@@ -78,8 +62,7 @@ def is_stub_file(path: Path) -> bool:
     :param path: file-system path to check.
     :returns: True if the file extension is `.pyi` else False.
     """
-    regex: Pattern[str] = safe_compile(STUB_FILE_REGEX, INCLUDE)
-    return bool(regex.search(path.name))
+    pass
 
 
 def is_included(path: Path, regex: Pattern[str]) -> bool:
@@ -89,7 +72,7 @@ def is_included(path: Path, regex: Pattern[str]) -> bool:
     :param regex: include regex pattern.
     :returns: True if the name match else False.
     """
-    return bool(regex.search(strpath(path)))
+    pass
 
 
 def is_excluded(path: Path, regex: Pattern[str]) -> bool:
@@ -99,7 +82,7 @@ def is_excluded(path: Path, regex: Pattern[str]) -> bool:
     :param regex: exclude regex pattern.
     :returns: True if the name match else False.
     """
-    return bool(regex.search(strpath(path)))
+    pass
 
 
 def get_gitignore(root: Path, no_gitignore: bool = False) -> PathSpec:
@@ -109,14 +92,7 @@ def get_gitignore(root: Path, no_gitignore: bool = False) -> PathSpec:
     :param no_gitignore: `config.no_gitignore` value (default=False).
     :returns: PathSpec matching gitignore content, if present.
     """
-    lines: list[str] = []
-    if not no_gitignore:
-        path = os.path.join(root, GITIGNORE)
-        if os.path.isfile(path):
-            if os.access(path, os.R_OK):
-                with tokenize.open(path) as ignore_file:
-                    lines = ignore_file.readlines()
-    return PathSpec.from_lines(GitWildMatchPattern, lines)
+    pass
 
 
 def skip_import(line: str) -> bool:
@@ -125,7 +101,7 @@ def skip_import(line: str) -> bool:
     :param line: a line to check.
     :returns: True if it matches else False.
     """
-    return bool(re.search(SKIP_IMPORT_REGEX, line, re.IGNORECASE))
+    pass
 
 
 def skip_file(src_code: str) -> bool:
@@ -134,4 +110,4 @@ def skip_file(src_code: str) -> bool:
     :param src_code: string source code to check.
     :returns: True if it matches else False.
     """
-    return bool(re.search(SKIP_FILE_REGEX, src_code, re.IGNORECASE))
+    pass

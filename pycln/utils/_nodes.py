@@ -77,10 +77,7 @@ class ImportFrom(BaseImport):
     @property
     def relative_name(self) -> str:
         """Node relative name."""
-        dots = "." * self.level
-        if self.module:
-            return f"{dots}{self.module}"
-        return dots
+        pass
 
     def __hash__(self):
         return hash(self.location)

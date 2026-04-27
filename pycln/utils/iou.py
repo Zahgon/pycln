@@ -34,24 +34,7 @@ def read_stdin() -> tuple[FileContent, Encoding, NewLine]:
     :raises UnparsableFile: If both a BOM and a cookie are present, but disagree.
         or some rare characters presented.
     """
-    try:
-        source_code_buf = io.BytesIO(sys.stdin.buffer.read())
-        encoding, lines = tokenize.detect_encoding(source_code_buf.readline)
-        if not lines:
-            return "", encoding, LF
-
-        newline = CRLF if CRLF.encode() == lines[0][-2:] else LF
-        source_code_buf.seek(0)
-        with io.TextIOWrapper(source_code_buf, encoding) as wrapper:
-            source_code = wrapper.read()
-
-        if FORM_FEED_CHAR in source_code:
-            raise ValueError(
-                "Pycln can not handle a file containing a form feed character (\\f)"
-            )
-        return source_code, encoding, newline
-    except (SyntaxError, ValueError) as err:
-        raise UnparsableFile(STDIN_FILE, err) from err
+    pass
 
 
 def safe_read(
@@ -70,30 +53,7 @@ def safe_read(
     :raises InitFileDoesNotExistError: when `path` is a path to a non-existing
         `__init__.py` file.
     """
-    # Check for a non-existing `__init__.py` file case.
-    if str(path).endswith(__INIT__) and not path.exists():
-        raise InitFileDoesNotExistError(2, "`__init__.py` file does not exist", path)
-
-    # Check these permissions before openinig the file.
-    for permission in permissions:
-        if not os.access(path, permission):
-            if permission is os.R_OK:
-                raise ReadPermissionError(13, "Permission denied [READ]", path)
-            elif permission is os.W_OK:
-                raise WritePermissionError(13, "Permission denied [WRITE]", path)
-    try:
-        with tokenize.open(path) as stream:
-            source_code = stream.read()
-            encoding = stream.encoding
-        if FORM_FEED_CHAR in source_code:
-            raise ValueError(
-                "Pycln can not handle a file containing a form feed character (\\f)"
-            )
-        with open(path, "rb") as f:
-            newline = CRLF if CRLF.encode() == f.readline()[-2:] else LF
-        return source_code, encoding, newline
-    except (SyntaxError, ValueError) as err:
-        raise UnparsableFile(path, err) from err
+    pass
 
 
 def safe_write(path: Path, fixed_lines: list[str], encoding: str, newline: str) -> None:
@@ -106,13 +66,4 @@ def safe_write(path: Path, fixed_lines: list[str], encoding: str, newline: str) 
     :raises WritePermissionError: when `os.W_OK` in permissions
         and the source does not have write permission.
     """
-    if not os.access(path, os.W_OK):
-        raise WritePermissionError(13, "Permission denied [WRITE]", path)
-
-    fixed_lines_newline = newline
-    if fixed_lines:
-        fixed_lines_newline = CRLF if CRLF == fixed_lines[0][-2:] else LF
-
-    with open(path, mode="w", encoding=encoding, newline="") as destination:
-        for line in fixed_lines:
-            destination.write(line.replace(fixed_lines_newline, newline))
+    pass

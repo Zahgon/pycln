@@ -69,64 +69,7 @@ def yield_sources(
     :param reporter: a `report.Report` object.
     :returns: generator of `.py` and `.pyi` files paths.
     """
-
-    dirs: set[Path] = set()
-    files: set[Path] = set()
-
-    is_included, is_excluded = regexu.is_included, regexu.is_excluded
-
-    if path.is_dir():
-        root_dir = os.scandir(path)
-    else:
-        root_dir = {path}
-        path = path.parent
-
-    for entry in root_dir:
-        entry_path = Path(entry)
-
-        # Skip symlinks.
-        if entry_path.is_symlink():
-            continue
-
-        # Compute exclusions.
-        if is_excluded(entry_path, exclude):
-            reporter.ignored_path(entry_path, EXCLUDE)
-            continue
-
-        # Compute extended exclusions.
-        if is_excluded(entry_path, extend_exclude):
-            reporter.ignored_path(entry_path, EXCLUDE)
-            continue
-
-        # Compute `.gitignore`.
-        if gitignore.match_file(entry_path):
-            reporter.ignored_path(entry_path, GITIGNORE)
-            continue
-
-        # Directories.
-        if entry_path.is_dir():
-            dirs.add(entry_path)
-            continue
-
-        # Files.
-        if is_included(entry_path, include):
-            files.add(entry_path)
-        else:
-            reporter.ignored_path(entry_path, INCLUDE)
-
-    yield from files
-
-    for dir_ in dirs:
-        # If gitignore is None, gitignore usage is disabled, while a Falsey
-        # gitignore is when the directory doesn't have a .gitignore file.
-        yield from yield_sources(
-            dir_,
-            include,
-            exclude,
-            extend_exclude,
-            gitignore + regexu.get_gitignore(dir_) if gitignore is not None else None,
-            reporter,
-        )
+    pass
 
 
 @lru_cache
@@ -135,20 +78,7 @@ def get_standard_lib_paths() -> set[Path]:
 
     :returns: set of paths to Python standard library modules.
     """
-    paths: set[Path] = set()
-
-    for lib_path in PYTHON_STDLIB_PATHS:
-        for path in os.listdir(lib_path):
-            paths.add(Path(os.path.join(lib_path, path)))
-
-        # Get lib dynload modules paths, if exists.
-        lib_dynload_path = os.path.join(lib_path, LIB_DYNLOAD)
-
-        if os.path.isdir(lib_dynload_path):
-            for path in os.listdir(lib_dynload_path):
-                paths.add(Path(os.path.join(lib_dynload_path, path)))
-
-    return paths
+    pass
 
 
 @lru_cache
@@ -157,21 +87,7 @@ def get_standard_lib_names() -> set[str]:
 
     :returns: a set of Python standard library modules names.
     """
-    names: set[str] = set()
-    paths: set[Path] = get_standard_lib_paths()
-
-    for path in paths:
-        name = str(path.parts[-1])
-
-        if name.startswith("_") or "-" in name:
-            continue
-
-        if "." in name and not name.endswith(LIB_PY_EXTENSIONS):
-            continue
-
-        names.add(name.split(".")[0])
-
-    return (names - IMPORTS_WITH_SIDE_EFFECTS) | BIN_IMPORTS
+    pass
 
 
 @lru_cache
@@ -181,27 +97,7 @@ def get_third_party_lib_paths() -> tuple[set[Path], set[Path]]:
     :returns: a tuple of a set of paths of third party library modules
         and a set of paths from `.pth` file(s) content, respectively.
     """
-    paths: set[Path] = set()
-    pth_paths: set[Path] = set()
-
-    packages_paths: set[str] = set()
-
-    for path in sys.path:
-        ppath = Path(path)
-        if ppath.parts[-1] in (DIST_PACKAGES, SITE_PACKAGES) or (
-            ppath.is_dir() and path not in PYTHON_STDLIB_PATHS
-        ):
-            packages_paths.add(path)
-
-    for path in packages_paths:
-        for name in os.listdir(path):
-            if name.endswith(PTH_EXTENSION):
-                for pth_path in _site.addpackage(path, name):
-                    pth_paths.add(Path(pth_path))
-            elif not name.startswith("_") and not name.endswith(BIN_PY_EXTENSIONS):
-                paths.add(Path(path).joinpath(name))
-
-    return paths, pth_paths
+    pass
 
 
 @lru_cache
@@ -214,23 +110,7 @@ def get_local_import_path(path: Path, module: str) -> Optional[Path]:
     :param module: a module name.
     :returns: a full `module/__init__.py` path.
     """
-    dirnames = path.parts if path.is_dir() else path.parent.parts
-    names = module.split(".")
-
-    # Test different levels.
-    for i in [None] + list(range(-10, -0)):
-        # If it's a file.
-        fpath = os.path.join(*dirnames[:i], *names[:-1], f"{names[-1]}{PY_EXTENSION}")
-        if os.path.isfile(fpath):
-            return Path(fpath)
-
-        # If it's a module.
-        mpath = os.path.join(*dirnames[:i], *names, __INIT__)
-        if os.path.isfile(mpath):
-            return Path(mpath)
-
-    # Path not found.
-    return None
+    pass
 
 
 def get_local_import_pth_path(pth_paths: set[Path], module: str) -> Optional[Path]:
@@ -241,13 +121,7 @@ def get_local_import_pth_path(pth_paths: set[Path], module: str) -> Optional[Pat
     :param module: a module name.
     :returns: a full `module/__init__.py` path.
     """
-    for path in pth_paths:
-        local_path = get_local_import_path(path, module)
-        if local_path:
-            return local_path
-
-    # Path not found.
-    return None
+    pass
 
 
 @lru_cache
@@ -264,56 +138,7 @@ def get_local_import_from_path(
     :param level: `ast.ImportFrom.level`.
     :returns: a full `module/__init__.py` path.
     """
-    dirname = path if path.is_dir() else path.parent
-    dirparts = dirname.parts[: (level * -1) + 1] if level > 1 else dirname.parts
-    modules = module.split(".") if module != "*" and module else []
-    packages = package.split(".") if package else []
-
-    # Test different levels.
-    for i in [None] + list(range(-10, -0)):
-        # If it's a file.
-        if modules:
-            fpath = os.path.join(
-                *dirparts[:i],
-                *packages if module != package else "",
-                *modules[:-1],
-                f"{modules[-1]}{PY_EXTENSION}",
-            )
-        else:
-            # IMPORT "*" CASE.
-            fpath = os.path.join(
-                *dirparts[:i],
-                *packages[:-1] if level > 0 else "",
-                f"{packages[-1] if packages else '__init__'}{PY_EXTENSION}",
-            )
-        if os.path.isfile(fpath):
-            return Path(fpath)
-
-        # If it's a module.
-        if modules:
-            mpath = os.path.join(
-                *dirparts[:i],
-                *packages,
-                *modules,
-                __INIT__,
-            )
-        else:
-            # IMPORT "*" CASE.
-            mpath = os.path.join(
-                *dirparts[:i],
-                *packages,
-                __INIT__,
-            )
-
-        if (
-            os.path.isfile(mpath)
-            and package is not None
-            and package.split(".")[0] in mpath
-        ):
-            return Path(mpath)
-
-    # Path not found.
-    return None
+    pass
 
 
 def get_local_import_from_pth_path(
@@ -330,13 +155,7 @@ def get_local_import_from_pth_path(
     :param level: `ast.ImportFrom.level`.
     :returns: a full `module/__init__.py` path.
     """
-    for path in pth_paths:
-        local_path = get_local_import_from_path(path, module, package, level)
-        if local_path:
-            return local_path
-
-    # Path not found.
-    return None
+    pass
 
 
 def get_module_path(
@@ -350,21 +169,7 @@ def get_module_path(
     :param level: `ast.ImportFrom.level`.
     :returns: `module` path if exist else None.
     """
-    if module is not None:
-        module = module.split(".")[0]
-        for path in paths:
-            name = str(path.parts[-1]).split(".")[0]
-            if name == module:
-                if str(path).endswith(PY_EXTENSION):
-                    return path
-                if Path(path).is_dir():
-                    return Path(path).joinpath(__INIT__)
-            if name == package:
-                mpath = get_local_import_from_path(path, module, package, level)
-                if mpath:
-                    return mpath
-    # Path not found.
-    return None
+    pass
 
 
 @lru_cache
@@ -377,19 +182,7 @@ def get_import_path(path: Path, module: str) -> Optional[Path]:
     :param module: module name.
     :returns: `module` file.py/__init_.py path, if found else None.
     """
-    mpath = get_local_import_path(path, module)
-    if mpath:
-        return mpath
-
-    elif module in get_standard_lib_names():
-        return get_module_path(get_standard_lib_paths(), module)
-
-    else:
-        paths, pth_paths = get_third_party_lib_paths()
-        mpath = get_local_import_pth_path(pth_paths, module)
-        if mpath:
-            return mpath
-        return get_module_path(paths, module)
+    pass
 
 
 @lru_cache
@@ -406,25 +199,4 @@ def get_import_from_path(
     :param level: `ast.ImportFrom.level`.
     :returns: `module` file.py/__init_.py path, if found else None.
     """
-    mpath = get_local_import_from_path(path, module, package, level)
-    if mpath:
-        return mpath
-
-    if module == "*":
-        module = package
-
-    if module in get_standard_lib_names():
-        return get_module_path(get_standard_lib_paths(), module)
-
-    elif package in get_standard_lib_names():
-        return get_module_path(get_standard_lib_paths(), package)
-
-    else:
-        paths, pth_paths = get_third_party_lib_paths()
-        mpath = get_local_import_from_pth_path(pth_paths, module, package, level)
-        if mpath:
-            return mpath
-        path = get_module_path(paths, module)
-        if not path and package:
-            path = get_module_path(paths, module, package, level)
-        return path
+    pass

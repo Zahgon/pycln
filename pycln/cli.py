@@ -166,46 +166,7 @@ def main(  # pylint: disable=R0913,R0914
         help="Show the version and exit.",
     ),
 ):
-    configs = Config(
-        paths=paths,
-        skip_imports=set(skip_imports),
-        config=config,
-        include=include,
-        exclude=exclude,
-        extend_exclude=extend_exclude,
-        all_=all_,
-        check=check,
-        diff=diff,
-        verbose=verbose,
-        quiet=quiet,
-        silence=silence,
-        expand_stars=expand_stars,
-        no_gitignore=no_gitignore,
-        disable_all_dunder_policy=disable_all_dunder_policy,
-    )
-    reporter = report.Report(configs)
-    session_maker = refactor.Refactor(configs, reporter)
-    for path in configs.paths:
-        if path == iou.STDIN_NOTATION:
-            sources: list[Path] = [iou.STDIN_FILE]
-        else:
-            gitignore = regexu.get_gitignore(
-                path if path.is_dir() else path.parent, configs.no_gitignore
-            )
-            sources: Generator = pathu.yield_sources(
-                path,
-                configs.include,
-                configs.exclude,
-                configs.extend_exclude,
-                gitignore,
-                reporter,
-            )
-        for source in sources:
-            session_maker.session(source)
-    # Print the report.
-    typer.echo(str(reporter), nl=False)
-    # Set the correct exit code and exit.
-    exit(reporter.exit_code)
+    pass
 
 
 # Override main function `__doc__`.
